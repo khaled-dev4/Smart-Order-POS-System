@@ -1,0 +1,72 @@
+-- =============================================
+-- Project: Employee Management System (Smart Order)
+-- DB Server: SQL Server 2022
+-- Description: Database Schema and Stored Procedures for Employee & Regional Insurance Management
+-- =============================================
+
+CREATE DATABASE SmartOrderDB;
+GO
+
+USE SmartOrderDB;
+GO
+
+-- 1. Create Regional Offices Table
+CREATE TABLE RegionalOffices (
+    OfficeID INT IDENTITY(1,1) PRIMARY KEY,
+    OfficeName NVARCHAR(150) NOT NULL,
+    RegionCode NVARCHAR(50) NOT NULL UNIQUE
+);
+GO
+
+-- 2. Create Employees Table
+CREATE TABLE Employees (
+    EmployeeID INT IDENTITY(1,1) PRIMARY KEY,
+    FullName NVARCHAR(200) NOT NULL,
+    NationalID NVARCHAR(14) NOT NULL UNIQUE,
+    InsuranceNumber NVARCHAR(50) NOT NULL UNIQUE,
+    HireDate DATE NOT NULL,
+    OfficeID INT FOREIGN KEY REFERENCES RegionalOffices(OfficeID),
+    IsActive BIT DEFAULT 1
+);
+GO
+
+-- 3. Stored Procedure: Insert Employee with Validation
+CREATE PROCEDURE sp_InsertEmployee
+    @FullName NVARCHAR(200),
+    @NationalID NVARCHAR(14),
+    @InsuranceNumber NVARCHAR(50),
+    @HireDate DATE,
+    @OfficeID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Validation: Check if Insurance Number already exists
+    IF EXISTS (SELECT 1 FROM Employees WHERE InsuranceNumber = @InsuranceNumber)
+    BEGIN
+        RAISERROR('Error: Insurance Number already registered!', 16, 1);
+        RETURN;
+    END
+
+    INSERT INTO Employees (FullName, NationalID, InsuranceNumber, HireDate, OfficeID)
+    VALUES (@FullName, @NationalID, @InsuranceNumber, @HireDate, @OfficeID);
+END;
+GO
+
+-- 4. Stored Procedure: Get Employee Data with Office Details
+CREATE PROCEDURE sp_GetEmployeeDetails
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        e.EmployeeID,
+        e.FullName,
+        e.InsuranceNumber,
+        e.HireDate,
+        o.OfficeName,
+        o.RegionCode
+    FROM Employees e
+    INNER JOIN RegionalOffices o ON e.OfficeID = o.OfficeID
+    WHERE e.IsActive = 1;
+END;
+GO
